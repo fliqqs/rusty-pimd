@@ -5,6 +5,7 @@ use libc::{
     sockaddr_in,
 };
 use socket2::{Domain, Socket, Type};
+use std::net::Shutdown;
 use std::{ffi::CStr, io, mem, os::unix::io::AsRawFd, ptr};
 
 #[derive(Debug)]
@@ -112,6 +113,7 @@ pub fn list_interfaces() -> io::Result<Vec<InterfaceInfo>> {
 
         offset += mem::size_of::<ifreq>();
     }
+    sock.shutdown(Shutdown::Both)?;
 
     println!("Found interfaces: {:?}", results);
     Ok(results)
