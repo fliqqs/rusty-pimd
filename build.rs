@@ -17,6 +17,7 @@ fn main() {
         .allowlist_type("ifconf")
         .allowlist_var("SIOCGIF.*") // ioctl constants
         .allowlist_var("MRT_.*") // multicast routing constants
+        .allowlist_var("VIFF_.*")
         .generate()
         .expect("Unable to generate bindings");
 

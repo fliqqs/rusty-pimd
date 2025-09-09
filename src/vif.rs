@@ -1,8 +1,8 @@
 include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
 
 use libc::{
-    IFF_LOOPBACK, IFF_MULTICAST, SIOCGIFCONF, SIOCGIFFLAGS, SIOCGIFINDEX, SIOCGIFNETMASK, ioctl,
-    sockaddr_in,
+    IFF_LOOPBACK, IFF_MULTICAST, IPPROTO_IP, SIOCGIFCONF, SIOCGIFFLAGS, SIOCGIFINDEX,
+    SIOCGIFNETMASK, c_void, ioctl, sockaddr_in,
 };
 use socket2::{Domain, Socket, Type};
 use std::net::Shutdown;
@@ -113,8 +113,36 @@ pub fn list_interfaces() -> io::Result<Vec<InterfaceInfo>> {
 
         offset += mem::size_of::<ifreq>();
     }
-    sock.shutdown(Shutdown::Both)?;
 
     println!("Found interfaces: {:?}", results);
     Ok(results)
+}
+
+fn start_vif(socket: &Socket, iface: &InterfaceInfo, vifi: i32) -> io::Result<()> {
+    let mut vc: vifctl = unsafe { mem::zeroed() };
+    vc.vifc_vifi = vifi as u16;
+    vc.vifc_flags = VIFF_USE_IFINDEX as u8;
+    vc.__bindgen_anon_1.vifc_lcl_ifindex = iface.ifindex as i32;
+
+    let ret = unsafe {
+        libc::setsockopt(
+            socket.as_raw_fd(),
+            IPPROTO_IP,
+            MRT_ADD_VIF as i32,
+            &vc as *const _ as *const c_void,
+            mem::size_of::<vifctl>() as u32,
+        )
+    };
+
+    Ok(())
+}
+
+pub fn setup_vifs(ifaces: Vec<InterfaceInfo>, socket: &Socket) {
+    for (i, iface) in ifaces.iter().enumerate() {
+        if let Err(e) = start_vif(socket, iface, i as i32) {
+            eprintln!("Failed to start vif for {}: {}", iface.name, e);
+        } else {
+            println!("Started vif {} for interface {}", i, iface.name);
+        }
+    }
 }
