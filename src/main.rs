@@ -1,8 +1,10 @@
 use tracing::{debug, info};
 mod ctx;
+mod igmp;
 mod vif;
 
 use crate::ctx::setup_context;
+use crate::igmp::decode_igmp;
 use crate::vif::list_interfaces;
 use std::mem::MaybeUninit;
 use tokio::io::unix::AsyncFd;
@@ -49,6 +51,8 @@ async fn main() -> std::io::Result<()> {
                         print!("{:02x} ", byte);
                     }
                     println!();
+
+                    decode_igmp(packet.clone());
 
                     if let Err(e) = tx.send(packet).await {
                         eprintln!("Receiver dropped: {}", e);
