@@ -7,6 +7,8 @@ use std::os::fd::AsRawFd;
 
 use crate::vif::setup_vifs;
 
+pub static ENABLE_PKTINFO: i32 = 1;
+
 pub struct Context {
     pub mroute_socket: Socket,
 }
@@ -37,6 +39,21 @@ fn open_mroute_socket() -> io::Result<Socket> {
             size_of_val(&opval).try_into().unwrap(),
         )
     };
+
+    if ENABLE_PKTINFO != 0 {
+        let ret2 = unsafe {
+            setsockopt(
+                sock.as_raw_fd(),
+                IPPROTO_IP,
+                libc::IP_PKTINFO,
+                &opval as *const _ as *const c_void,
+                size_of_val(&opval).try_into().unwrap(),
+            )
+        };
+        if ret2 < 0 {
+            return Err(io::Error::last_os_error());
+        }
+    }
 
     if ret < 0 {
         Err(io::Error::last_os_error())
